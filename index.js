@@ -58,8 +58,20 @@ app.post('/bookings', async (req, res) => {
             return res.status(400).json({ error: "Missing required booking fields" });
         }
 
+        const studioObjectId = new ObjectId(studioId);
+        const existingBooking = await bookingCollection.findOne({
+            studioId: studioObjectId,
+            bookingDate
+        });
+
+        if (existingBooking) {
+            return res.status(409).json({
+                message: "The studio is already booked for this date"
+            });
+        }
+
         const newBooking = {
-            studioId: new ObjectId(studioId),
+            studioId: studioObjectId,
             bookingDate,
             userName,
             userEmail,
