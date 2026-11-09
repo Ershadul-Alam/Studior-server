@@ -14,6 +14,7 @@ app.use(cors({
 
 const client = new MongoClient(process.env.MONGODB_URI);
 let studiosCollection;
+let bookingCollection;
 
 async function startServer() {
     try {
@@ -23,6 +24,7 @@ async function startServer() {
 
         const db = client.db("studior");
         studiosCollection = db.collection("studios");
+        bookingCollection = db.collection("booking");
 
         // 2. Start the Express server ONLY if DB connection succeeds
         app.listen(port, () => {
@@ -46,6 +48,37 @@ app.get('/studios/:id', async (req, res) => {
     const { id } = req.params;
     const result = await studiosCollection.findOne({ _id: new ObjectId(id) });
     res.send(result);
+});
+
+app.post('/bookings', async (req, res) => {
+    try {
+        const { studioId, bookingDate, userName, userEmail } = req.body;
+
+        if (!studioId || !bookingDate || !userName || !userEmail) {
+            return res.status(400).json({ error: "Missing required booking fields" });
+        }
+
+        const newBooking = {
+            studioId: new ObjectId(studioId),
+            bookingDate,
+            userName,
+            userEmail,
+            status: "pending",
+            createdAt: new Date()
+        };
+
+        const result = await bookingCollection.insertOne(newBooking);
+
+        res.status(201).json({
+            success: true,
+            message: "Booking successful",
+            bookingId: result.insertedId
+        });
+
+    } catch (error) {
+        console.error("Error creating booking:", error);
+        res.status(500).json({ error: "Failed to create booking" });
+    }
 });
 
 app.delete('/your-studio/:id', async (req, res) => {
