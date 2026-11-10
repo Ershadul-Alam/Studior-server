@@ -44,6 +44,11 @@ app.get('/studios', async (req, res) => {
     res.send(result);
 });
 
+app.get('/bookings', async (req, res) => {
+    const result = await bookingCollection.find().toArray();
+    res.send(result);
+});
+
 app.get('/studios/:id', async (req, res) => {
     const { id } = req.params;
     const result = await studiosCollection.findOne({ _id: new ObjectId(id) });
@@ -52,9 +57,9 @@ app.get('/studios/:id', async (req, res) => {
 
 app.post('/bookings', async (req, res) => {
     try {
-        const { studioId, bookingDate, userName, userEmail } = req.body;
+        const { studioId, bookingDate, clientName, clientEmail } = req.body;
 
-        if (!studioId || !bookingDate || !userName || !userEmail) {
+        if (!studioId || !bookingDate || !clientName || !clientEmail) {
             return res.status(400).json({ error: "Missing required booking fields" });
         }
 
@@ -73,8 +78,8 @@ app.post('/bookings', async (req, res) => {
         const newBooking = {
             studioId: studioObjectId,
             bookingDate,
-            userName,
-            userEmail,
+            clientName,
+            clientEmail,
             status: "pending",
             createdAt: new Date()
         };
@@ -90,6 +95,42 @@ app.post('/bookings', async (req, res) => {
     } catch (error) {
         console.error("Error creating booking:", error);
         res.status(500).json({ error: "Failed to create booking" });
+    }
+});
+
+app.patch('/your-studio/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid studio ID format." });
+        }
+
+        if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+            return res.status(400).json({ error: "Request body must be an object." });
+        }
+
+        if (Object.hasOwn(req.body, '_id')) {
+            return res.status(400).json({ error: "Studio ID cannot be updated." });
+        }
+
+        if (Object.keys(req.body).length === 0) {
+            return res.status(400).json({ error: "At least one field is required to update the studio." });
+        }
+
+        const result = await studiosCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: req.body }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ error: "Studio not found." });
+        }
+
+        return res.status(200).json({ message: "Studio updated successfully." });
+    } catch (error) {
+        console.error("[PATCH /your-studio/:id] Error:", error);
+        return res.status(500).json({ error: "Failed to update the studio due to a server error." });
     }
 });
 
@@ -115,6 +156,31 @@ app.delete('/your-studio/:id', async (req, res) => {
         console.error("[DELETE /your-studio/:id] Error:", error);
 
         return res.status(500).json({ error: "Failed to delete the studio due to a server error." });
+    }
+});
+
+app.delete('/booking/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "Invalid studio ID format." });
+        }
+
+        const result = await bookingCollection.deleteOne({
+            _id: new ObjectId(id)
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Booking not found or already cancelled." });
+        }
+
+        return res.status(200).json({ message: "Booking cancelled successfully." });
+
+    } catch (error) {
+        console.error("[DELETE /booking/:id] Error:", error);
+
+        return res.status(500).json({ error: "Failed to cancel the booking due to a server error." });
     }
 });
 
