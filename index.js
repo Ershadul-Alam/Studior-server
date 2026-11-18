@@ -48,7 +48,7 @@ const verifyToken = async(req, res, next) => {
     }
 
     const JWKS = createRemoteJWKSet(
-      new URL('http://localhost:3000/api/auth/jwks')
+      new URL(`${process.env.BASE_URI}/api/auth/jwks`)
     )
 
     try{
