@@ -2,6 +2,7 @@ import express from 'express';
 import cors from "cors";
 import { MongoClient, ObjectId } from 'mongodb';
 import 'dotenv/config';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const app = express();
 const port = 8000;
@@ -36,6 +37,28 @@ async function startServer() {
     }
 }
 
+const verifyToken = async(req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if(!authHeader){
+        return res.status(401).send('Unauthorized');
+    }
+    const token = authHeader.split(" ")[1]
+    if(!token){
+        return res.status(401).send('Unauthorized');
+    }
+
+    const JWKS = createRemoteJWKSet(
+      new URL('http://localhost:3000/api/auth/jwks')
+    )
+
+    try{
+    const { payload } = await jwtVerify(token, JWKS)
+    next();
+    }catch{
+        return res.status(500).send('Token Verification Failed');
+    }
+    
+}
 
 
 // Routes
@@ -49,13 +72,13 @@ app.get('/bookings', async (req, res) => {
     res.send(result);
 });
 
-app.get('/studios/:id', async (req, res) => {
+app.get('/studios/:id', verifyToken, async (req, res) => {
     const { id } = req.params;
     const result = await studiosCollection.findOne({ _id: new ObjectId(id) });
     res.send(result);
 });
 
-app.post('/bookings', async (req, res) => {
+app.post('/bookings', verifyToken, async (req, res) => {
     try {
         const { studioId, bookingDate, clientName, clientEmail } = req.body;
 
@@ -98,7 +121,7 @@ app.post('/bookings', async (req, res) => {
     }
 });
 
-app.patch('/your-studio/:id', async (req, res) => {
+app.patch('/your-studio/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -134,7 +157,7 @@ app.patch('/your-studio/:id', async (req, res) => {
     }
 });
 
-app.delete('/your-studio/:id', async (req, res) => {
+app.delete('/your-studio/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -159,7 +182,7 @@ app.delete('/your-studio/:id', async (req, res) => {
     }
 });
 
-app.delete('/booking/:id', async (req, res) => {
+app.delete('/booking/:id', verifyToken, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -184,7 +207,7 @@ app.delete('/booking/:id', async (req, res) => {
     }
 });
 
-app.post('/add-studio', async (req, res) => {
+app.post('/add-studio', verifyToken, async (req, res) => {
     const newStudio = req.body;
     const result = await studiosCollection.insertOne(newStudio);
     res.status(201).send(result);
