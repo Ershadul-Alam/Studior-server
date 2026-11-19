@@ -66,6 +66,10 @@ app.get('/studios', async (req, res) => {
     const result = await studiosCollection.find().toArray();
     res.send(result);
 });
+app.get('/featured-studios', async (req, res) => {
+    const result = await studiosCollection.find().limit(6).toArray();
+    res.send(result);
+});
 
 app.get('/bookings', async (req, res) => {
     const result = await bookingCollection.find().toArray();
@@ -212,6 +216,8 @@ app.post('/add-studio', verifyToken, async (req, res) => {
     const result = await studiosCollection.insertOne(newStudio);
     res.status(201).send(result);
 });
+
+
 
 // Initialize everything
 startServer();
